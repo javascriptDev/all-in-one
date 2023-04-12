@@ -4,13 +4,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Stake is Ownable {
+    event Response(bool success, bytes data, uint256);
+
     constructor() payable {}
 
     // 批量授权 todo: 合约管理员操作
-    function approve(
-        address[] calldata coins,
-        address[] calldata spenders
-    ) public onlyOwner {
+    function approve(address[] calldata coins, address[] calldata spenders)
+        public
+        onlyOwner
+    {
         for (uint i = 0; i < coins.length; i++) {
             if (IERC20(coins[i]).allowance(address(this), spenders[i]) != 0) {
                 continue;
@@ -23,10 +25,10 @@ contract Stake is Ownable {
     }
 
     // 批量取消授权
-    function dis_approve(
-        address[] calldata coins,
-        address[] calldata spenders
-    ) public onlyOwner {
+    function dis_approve(address[] calldata coins, address[] calldata spenders)
+        public
+        onlyOwner
+    {
         for (uint i = 0; i < coins.length; i++) {
             IERC20(coins[i]).approve(
                 spenders[i],
@@ -104,8 +106,14 @@ contract Stake is Ownable {
             outputCoinsBalance[j] = IERC20(token).balanceOf(address(this));
         }
 
-        (bool success, ) = proxy.call{value: msg.value}(data);
+        (bool success, bytes memory data) = proxy.delegatecall(data);
         require(success, "revert");
+        emit Response(
+            success,
+            data,
+            outputCoinsBalance[0],
+            IERC20(outputCoins[0]).balanceOf(address(this))
+        );
 
         // 把钱转给用户
         for (uint k = 0; k < outputCoins.length; k++) {
@@ -132,11 +140,11 @@ contract Stake is Ownable {
 contract StakeProxy1 {
     constructor() {}
 
-    function deposit_and_stake(
-        address pool,
-        bytes calldata data
-    ) public payable {
-        (bool success, ) = pool.delegatecall(data);
+    function deposit_and_stake(address pool, bytes calldata data)
+        public
+        payable
+    {
+        (bool success, ) = pool.call{value: msg.value}(data);
         require(success, "revert");
     }
 }
